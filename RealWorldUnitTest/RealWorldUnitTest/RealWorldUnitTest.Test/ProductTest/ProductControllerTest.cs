@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Moq;
@@ -222,6 +223,51 @@ namespace RealWorldUnitTest.Test.ProductTest
             var resultProduct = Assert.IsAssignableFrom<Product>(viewResult.Model);
 
             Assert.Equal(product.Id, resultProduct.Id);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        public void EditPost_IdIsNotEqualProduct_ReturnNotFound(int productId)
+        {
+            var result = _controller.Edit(2, _products.First(x => x.Id == productId));
+
+            var redirect = Assert.IsType<NotFoundResult>(result);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        public void EditPost_InValidModelState_ReturnView(int productId)
+        {
+            _controller.ModelState.AddModelError("Name","");
+
+            var result = _controller.Edit(productId, _products.First(x => x.Id == productId));
+
+            var viewResult = Assert.IsType<ViewResult>(result);
+
+            Assert.IsType<Product>(viewResult.Model);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        public void EditPost_ValidModelState_ReturnRedirectToIndexAction(int productId)
+        {
+            var result = _controller.Edit(productId, _products.First(x => x.Id == productId));
+
+            var redirect = Assert.IsType<RedirectToActionResult>(result);
+
+            Assert.Equal("Index", redirect.ActionName);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        public void EditPost_ValidModelState_UpdateMethodExecute(int productId)
+        {
+            var product = _products.First(x => x.Id == productId);
+            _mockRepo.Setup(repo => repo.Update(product));
+
+            _controller.Edit(productId, product);
+
+            _mockRepo.Verify(repo=> repo.Update(It.IsAny<Product>()),Times.Once);
         }
     }
 }
